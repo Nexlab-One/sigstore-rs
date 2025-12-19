@@ -202,65 +202,57 @@ pub fn get_algorithm_details(algorithm: u32) -> Result<AlgorithmDetails> {
             None,
             "ed25519"
         ),
-        // PQC algorithms - use numeric values since variants may not exist yet
-        // ML_DSA_65, ML_DSA_87, ML_DSA_44, FALCON_512, FALCON_1024, SPHINCS_PLUS_128F, SPHINCS_PLUS_192F, SPHINCS_PLUS_256F
-        // These are typically after the classical algorithms, starting around 12-19
-        x if x == PublicKeyDetails::MlDsa65 as i32 || x == 12 || x == 21 => make_details!(
+        // PQC algorithms
+        x if x == PublicKeyDetails::MlDsa65 as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "ml-dsa-65"
         ),
-        x if x == PublicKeyDetails::MlDsa87 as i32 || x == 13 || x == 22 => make_details!(
+        x if x == PublicKeyDetails::MlDsa87 as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "ml-dsa-87"
         ),
-        x if x == 14 || x == 23 => make_details!(
-            // ML_DSA_44 (protobuf enum value 23)
+        x if x == PublicKeyDetails::MlDsa44 as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "ml-dsa-44"
         ),
-        x if x == 15 || x == 24 => make_details!(
-            // FALCON_512 (protobuf enum value 24)
+        x if x == PublicKeyDetails::Falcon512 as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "falcon-512"
         ),
-        x if x == 16 || x == 25 => make_details!(
-            // FALCON_1024 (protobuf enum value 25)
+        x if x == PublicKeyDetails::Falcon1024 as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "falcon-1024"
         ),
-        x if x == 17 || x == 26 => make_details!(
-            // SPHINCS_PLUS_128F (protobuf enum value 26)
+        x if x == PublicKeyDetails::SphincsPlus128f as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "sphincs-plus-128f"
         ),
-        x if x == 18 || x == 27 => make_details!(
-            // SPHINCS_PLUS_192F (protobuf enum value 27)
+        x if x == PublicKeyDetails::SphincsPlus192f as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
             None,
             "sphincs-plus-192f"
         ),
-        x if x == 19 || x == 28 => make_details!(
-            // SPHINCS_PLUS_256F (protobuf enum value 28)
+        x if x == PublicKeyDetails::SphincsPlus256f as i32 => make_details!(
             PublicKeyType::PQC,
             1,
             HashAlgorithm::Sha2256,
@@ -528,7 +520,7 @@ mod tests {
 
         #[test]
         fn test_ml_dsa_44() {
-            let details = get_algorithm_details(14).unwrap();
+            let details = get_algorithm_details(PublicKeyDetails::MlDsa44 as u32).unwrap();
             assert_eq!(details.key_type, PublicKeyType::PQC);
             assert_eq!(details.hash_type, 1);
             assert_eq!(details.proto_hash_type, HashAlgorithm::Sha2256 as u32);
@@ -538,7 +530,7 @@ mod tests {
 
         #[test]
         fn test_falcon_512() {
-            let details = get_algorithm_details(15).unwrap();
+            let details = get_algorithm_details(PublicKeyDetails::Falcon512 as u32).unwrap();
             assert_eq!(details.key_type, PublicKeyType::PQC);
             assert_eq!(details.hash_type, 1);
             assert_eq!(details.proto_hash_type, HashAlgorithm::Sha2256 as u32);
@@ -548,7 +540,7 @@ mod tests {
 
         #[test]
         fn test_falcon_1024() {
-            let details = get_algorithm_details(16).unwrap();
+            let details = get_algorithm_details(PublicKeyDetails::Falcon1024 as u32).unwrap();
             assert_eq!(details.key_type, PublicKeyType::PQC);
             assert_eq!(details.hash_type, 1);
             assert_eq!(details.proto_hash_type, HashAlgorithm::Sha2256 as u32);
@@ -558,7 +550,7 @@ mod tests {
 
         #[test]
         fn test_sphincs_plus_128f() {
-            let details = get_algorithm_details(17).unwrap();
+            let details = get_algorithm_details(PublicKeyDetails::SphincsPlus128f as u32).unwrap();
             assert_eq!(details.key_type, PublicKeyType::PQC);
             assert_eq!(details.hash_type, 1);
             assert_eq!(details.proto_hash_type, HashAlgorithm::Sha2256 as u32);
@@ -568,7 +560,7 @@ mod tests {
 
         #[test]
         fn test_sphincs_plus_192f() {
-            let details = get_algorithm_details(18).unwrap();
+            let details = get_algorithm_details(PublicKeyDetails::SphincsPlus192f as u32).unwrap();
             assert_eq!(details.key_type, PublicKeyType::PQC);
             assert_eq!(details.hash_type, 1);
             assert_eq!(details.proto_hash_type, HashAlgorithm::Sha2256 as u32);
@@ -578,7 +570,7 @@ mod tests {
 
         #[test]
         fn test_sphincs_plus_256f() {
-            let details = get_algorithm_details(19).unwrap();
+            let details = get_algorithm_details(PublicKeyDetails::SphincsPlus256f as u32).unwrap();
             assert_eq!(details.key_type, PublicKeyType::PQC);
             assert_eq!(details.hash_type, 1);
             assert_eq!(details.proto_hash_type, HashAlgorithm::Sha2256 as u32);

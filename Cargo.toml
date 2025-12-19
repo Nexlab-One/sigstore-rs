@@ -246,6 +246,9 @@ aws-lc-rs = { version = "1.15.2", optional = true }
 [target.'cfg(target_arch = "powerpc64")'.dependencies]
 aws-lc-rs = { version = "1.15.2", optional = true, features = ["bindgen"] }
 
+[patch.crates-io]
+sigstore_protobuf_specs = { path = "../protobuf-specs/gen/pb-rust/sigstore-protobuf-specs" }
+
 # cosign example mappings
 
 [[example]]
