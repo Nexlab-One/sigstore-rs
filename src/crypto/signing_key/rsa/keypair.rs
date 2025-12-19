@@ -68,7 +68,7 @@ impl RSAKeys {
     /// The private key will be randomly
     /// generated.
     pub fn new(bit_size: usize) -> Result<Self> {
-        let mut rng = rand::rngs::OsRng {};
+        let mut rng = pkcs8::rand_core::OsRng;
         let private_key = RsaPrivateKey::new(&mut rng, bit_size)?;
         let public_key = RsaPublicKey::from(&private_key);
         Ok(Self {

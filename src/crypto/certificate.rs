@@ -15,6 +15,7 @@
 
 use chrono::{DateTime, Utc};
 use const_oid::db::rfc5912::ID_KP_CODE_SIGNING;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use thiserror::Error;
 use x509_cert::{
     Certificate,
@@ -22,6 +23,13 @@ use x509_cert::{
 };
 
 use crate::errors::{Result, SigstoreError};
+
+/// Convert const_oid 0.10.1 ObjectIdentifier to pkcs8 ObjectIdentifier
+fn to_pkcs8_oid(oid: &const_oid::ObjectIdentifier) -> Pkcs8ObjectIdentifier {
+    // Get the bytes from const_oid 0.10.1 OID and parse as pkcs8 OID
+    let bytes = oid.as_bytes();
+    Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+}
 
 /// Ensure the given certificate can be trusted for verifying cosign
 /// signatures.
@@ -56,7 +64,9 @@ pub(crate) fn verify_key_usages(certificate: &Certificate) -> Result<()> {
         .ok_or(SigstoreError::CertificateWithoutCodeSigningKeyUsage)?;
 
     // code signing
-    if !key_ext_usage.0.contains(&ID_KP_CODE_SIGNING) {
+    // Convert const_oid 0.10.1 ID_KP_CODE_SIGNING to pkcs8 format for comparison
+    let id_kp_code_signing_pkcs8 = to_pkcs8_oid(&ID_KP_CODE_SIGNING);
+    if !key_ext_usage.0.contains(&id_kp_code_signing_pkcs8) {
         return Err(SigstoreError::CertificateWithoutCodeSigningKeyUsage);
     }
 
@@ -216,7 +226,9 @@ pub(crate) fn is_leaf(
         Some((_, extended_key_usage)) => extended_key_usage,
     };
 
-    if !extended_key_usage.0.contains(&ID_KP_CODE_SIGNING) {
+    // Convert const_oid 0.10.1 ID_KP_CODE_SIGNING to pkcs8 format for comparison
+    let id_kp_code_signing_pkcs8 = to_pkcs8_oid(&ID_KP_CODE_SIGNING);
+    if !extended_key_usage.0.contains(&id_kp_code_signing_pkcs8) {
         Err(ExtensionErrorKind::BitUnset(
             "ExtendedKeyUsage.digitalSignature",
         ))?;

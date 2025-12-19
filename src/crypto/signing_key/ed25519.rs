@@ -86,7 +86,7 @@ impl Ed25519Keys {
     /// The private key will be randomly
     /// generated.
     pub fn new() -> Result<Self> {
-        let mut csprng = rand::rngs::OsRng {};
+        let mut csprng = pkcs8::rand_core::OsRng;
         let signing_key = SigningKey::generate(&mut csprng);
         let verifying_key = signing_key.verifying_key();
         Ok(Self {

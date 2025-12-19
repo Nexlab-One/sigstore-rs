@@ -21,7 +21,7 @@
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STD_ENGINE};
 use crypto_secretbox::aead::{AeadMut, KeyInit};
-use rand::Rng;
+use pkcs8::rand_core::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::errors::*;
@@ -209,7 +209,9 @@ struct Data {
 fn generate_random(len: u32) -> Vec<u8> {
     let mut res = Vec::new();
     for _ in 0..len {
-        res.push(rand::thread_rng().r#gen());
+        let mut bytes = [0u8; 4];
+        pkcs8::rand_core::OsRng.fill_bytes(&mut bytes);
+        res.push(bytes[0]);
     }
     res
 }

@@ -190,6 +190,8 @@ use self::signing_key::{
 
 pub mod signing_key;
 
+pub mod algorithm_registry;
+
 #[cfg(any(feature = "sign", feature = "verify"))]
 pub(crate) mod transparency;
 

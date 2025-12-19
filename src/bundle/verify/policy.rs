@@ -17,6 +17,7 @@
 //! <https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#extension-values>
 
 use const_oid::ObjectIdentifier;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use thiserror::Error;
 use tracing::warn;
 use x509_cert::ext::pkix::{SubjectAltName, name::GeneralName};
@@ -99,8 +100,13 @@ pub trait SingleX509ExtPolicy {
 
 impl<T: SingleX509ExtPolicy + const_oid::AssociatedOid> VerificationPolicy for T {
     fn verify(&self, cert: &x509_cert::Certificate) -> PolicyResult {
+        // Convert const_oid 0.10.1 T::OID to pkcs8 format for comparison
+        let oid_pkcs8 = {
+            let bytes = T::OID.as_bytes();
+            Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+        };
         let extensions = cert.tbs_certificate.extensions.as_deref().unwrap_or(&[]);
-        let mut extensions = extensions.iter().filter(|ext| ext.extn_id == T::OID);
+        let mut extensions = extensions.iter().filter(|ext| ext.extn_id == oid_pkcs8);
 
         // Check for exactly one extension.
         let (Some(ext), None) = (extensions.next(), extensions.next()) else {
@@ -275,7 +281,15 @@ impl VerificationPolicy for Identity {
             .filter_map(|name| match name {
                 GeneralName::Rfc822Name(name) => Some(name.as_str()),
                 GeneralName::UniformResourceIdentifier(name) => Some(name.as_str()),
-                GeneralName::OtherName(name) if name.type_id == OTHERNAME_OID => {
+                GeneralName::OtherName(name)
+                    if {
+                        let othername_oid_pkcs8 = {
+                            let bytes = OTHERNAME_OID.as_bytes();
+                            Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+                        };
+                        name.type_id == othername_oid_pkcs8
+                    } =>
+                {
                     std::str::from_utf8(name.value.value()).ok()
                 }
                 _ => None,

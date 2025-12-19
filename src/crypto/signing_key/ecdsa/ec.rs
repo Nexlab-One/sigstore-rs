@@ -132,7 +132,7 @@ where
     /// The secret key (private key) will be randomly
     /// generated.
     pub fn new() -> Result<Self> {
-        let ec_seckey: SecretKey<C> = SecretKey::random(&mut rand::rngs::OsRng);
+        let ec_seckey: SecretKey<C> = SecretKey::random(&mut pkcs8::rand_core::OsRng);
 
         let public_key = ec_seckey.public_key();
         Ok(EcdsaKeys {

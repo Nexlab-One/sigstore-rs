@@ -189,7 +189,7 @@ impl RSASigner {
 impl Signer for RSASigner {
     /// `sign` will sign the given data, and return the signature.
     fn sign(&self, msg: &[u8]) -> Result<Vec<u8>> {
-        let mut rng = rand::thread_rng();
+        let mut rng = pkcs8::rand_core::OsRng;
         Ok(iter_on_rsa!(
             RSASigner,
             self,

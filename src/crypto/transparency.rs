@@ -16,6 +16,7 @@
 
 use const_oid::db::rfc6962::{CT_PRECERT_SCTS, CT_PRECERT_SIGNING_CERT};
 use digest::Digest;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use thiserror::Error;
 use tls_codec::{SerializeBytes, TlsByteVecU16, TlsByteVecU24, TlsSerializeBytes, TlsSize};
 use tracing::debug;
@@ -39,7 +40,12 @@ fn cert_is_preissuer(cert: &Certificate) -> bool {
         _ => return false,
     };
 
-    eku.0.contains(&CT_PRECERT_SIGNING_CERT)
+    // Convert const_oid 0.10.1 CT_PRECERT_SIGNING_CERT to pkcs8 format for comparison
+    let ct_precert_signing_cert_pkcs8 = {
+        let bytes = CT_PRECERT_SIGNING_CERT.as_bytes();
+        Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+    };
+    eku.0.contains(&ct_precert_signing_cert_pkcs8)
 }
 
 // <https://github.com/sigstore/sigstore-python/blob/main/sigstore/_internal/sct.py>
@@ -237,7 +243,13 @@ impl From<&CertificateEmbeddedSCT<'_>> for DigitallySigned {
         let mut tbs_precert = value.cert.tbs_certificate.clone();
         tbs_precert.extensions = tbs_precert.extensions.map(|exts| {
             exts.iter()
-                .filter(|v| v.extn_id != CT_PRECERT_SCTS)
+                .filter(|v| {
+                    let ct_precert_scts_pkcs8 = {
+                        let bytes = CT_PRECERT_SCTS.as_bytes();
+                        Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+                    };
+                    v.extn_id != ct_precert_scts_pkcs8
+                })
                 .cloned()
                 .collect()
         });

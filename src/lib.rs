@@ -237,7 +237,7 @@
 //! - `bundle`: Includes both `sign` and `verify`.
 //! - `sigstore-trust-root`: Enables support for Sigstore trust root.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "ffi"), forbid(unsafe_code))]
 #![warn(clippy::unwrap_used, clippy::panic)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
@@ -273,3 +273,7 @@ pub mod rekor;
 #[cfg_attr(docsrs, doc(cfg(any(feature = "sign", feature = "verify"))))]
 #[cfg(any(feature = "sign", feature = "verify"))]
 pub mod bundle;
+
+#[cfg_attr(docsrs, doc(cfg(feature = "ffi")))]
+#[cfg(feature = "ffi")]
+pub mod ffi;

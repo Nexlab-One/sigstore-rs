@@ -16,6 +16,7 @@
 use const_oid::ObjectIdentifier;
 use digest::Digest;
 use oci_client::client::ImageLayer;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -501,6 +502,11 @@ fn get_cert_extension_by_oid(
     ext_oid: ObjectIdentifier,
     ext_oid_name: &str,
 ) -> Result<Option<String>> {
+    // Convert const_oid 0.10.1 ext_oid to pkcs8 format for comparison
+    let ext_oid_pkcs8 = {
+        let bytes = ext_oid.as_bytes();
+        Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+    };
     cert.tbs_certificate
         .extensions
         .as_ref()
@@ -508,7 +514,7 @@ fn get_cert_extension_by_oid(
             "Certificate's extension is empty".to_string(),
         ))?
         .iter()
-        .find(|ext| ext.extn_id == ext_oid)
+        .find(|ext| ext.extn_id == ext_oid_pkcs8)
         .map(|ext| {
             String::from_utf8(ext.extn_value.clone().into_bytes()).map_err(|_| {
                 SigstoreError::X509Error(format!(

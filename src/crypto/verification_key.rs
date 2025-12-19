@@ -16,6 +16,7 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STD_ENGINE};
 use const_oid::db::rfc5912::{ID_EC_PUBLIC_KEY, RSA_ENCRYPTION};
 use ed25519::pkcs8::DecodePublicKey as ED25519DecodePublicKey;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use rsa::{pkcs1v15, pss};
 use sha2::{Digest, Sha256, Sha384};
 use signature::{DigestVerifier, Verifier, hazmat::PrehashVerifier};
@@ -71,8 +72,24 @@ impl TryFrom<&SubjectPublicKeyInfoOwned> for CosignVerificationKey {
     fn try_from(subject_pub_key_info: &SubjectPublicKeyInfoOwned) -> Result<Self> {
         let algorithm = subject_pub_key_info.algorithm.oid;
         let public_key_der = &subject_pub_key_info.subject_public_key;
+
+        // Convert const_oid 0.10.1 OIDs to pkcs8 format for comparison
+        let id_ec_public_key_pkcs8 = {
+            let bytes = ID_EC_PUBLIC_KEY.as_bytes();
+            Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+        };
+        let rsa_encryption_pkcs8 = {
+            let bytes = RSA_ENCRYPTION.as_bytes();
+            Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+        };
+        #[cfg(feature = "cosign")]
+        let ed25519_pkcs8 = {
+            let bytes = ED25519.as_bytes();
+            Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+        };
+
         match algorithm {
-            ID_EC_PUBLIC_KEY => {
+            algo if algo == id_ec_public_key_pkcs8 => {
                 match public_key_der.raw_bytes().len() {
                     65 => Ok(CosignVerificationKey::ECDSA_P256_SHA256_ASN1(
                         ecdsa::VerifyingKey::try_from(subject_pub_key_info.owned_to_ref())
@@ -97,7 +114,7 @@ impl TryFrom<&SubjectPublicKeyInfoOwned> for CosignVerificationKey {
                     ))),
                 }
             }
-            RSA_ENCRYPTION => {
+            algo if algo == rsa_encryption_pkcs8 => {
                 let pubkey = rsa::RsaPublicKey::try_from(subject_pub_key_info.owned_to_ref())
                     .map_err(|e| {
                         SigstoreError::PKCS8SpkiError(format!(
@@ -110,7 +127,7 @@ impl TryFrom<&SubjectPublicKeyInfoOwned> for CosignVerificationKey {
             }
             //
             #[cfg(feature = "cosign")]
-            ED25519 => Ok(CosignVerificationKey::ED25519(
+            algo if algo == ed25519_pkcs8 => Ok(CosignVerificationKey::ED25519(
                 ed25519_dalek::VerifyingKey::try_from(subject_pub_key_info.owned_to_ref())?,
             )),
             _ => Err(SigstoreError::PublicKeyUnsupportedAlgorithmError(format!(

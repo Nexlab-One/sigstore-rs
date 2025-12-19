@@ -43,3 +43,9 @@ clean:
 .PHONY: coverage
 coverage:
 	cargo tarpaulin -o Html
+
+.PHONY: generate-bindings
+generate-bindings:
+	cargo install cbindgen --locked || true
+	cargo build --features ffi,sign --lib
+	cbindgen --config cbindgen.toml --crate sigstore --output bindings.h

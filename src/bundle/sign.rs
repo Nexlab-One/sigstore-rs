@@ -22,6 +22,7 @@ use std::{
 use base64::{Engine as _, engine::general_purpose::STANDARD as base64};
 use hex;
 use p256::NistP256;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use pkcs8::der::{Encode, EncodePem};
 use sha2::{Digest, Sha256};
 use signature::DigestSigner;
@@ -87,6 +88,12 @@ impl<'ctx> SigningSession<'ctx> {
         fulcio: &FulcioClient,
         token: &IdentityToken,
     ) -> SigstoreResult<(ecdsa::SigningKey<NistP256>, fulcio::CertificateResponse)> {
+        // Convert const_oid 0.10.1 EMAIL_ADDRESS to pkcs8 format
+        let email_address_pkcs8 = {
+            let bytes = const_oid::db::rfc3280::EMAIL_ADDRESS.as_bytes();
+            Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+        };
+
         let subject =
                 // SEQUENCE OF RelativeDistinguishedName
                 vec![
@@ -94,7 +101,7 @@ impl<'ctx> SigningSession<'ctx> {
                     vec![
                         // AttributeTypeAndValue, `emailAddress=...`
                         AttributeTypeAndValue {
-                            oid: const_oid::db::rfc3280::EMAIL_ADDRESS,
+                            oid: email_address_pkcs8,
                             value: AttributeValue::new(
                                 pkcs8::der::Tag::Utf8String,
                                 token.unverified_claims().email.as_ref(),
@@ -103,8 +110,8 @@ impl<'ctx> SigningSession<'ctx> {
                     ].try_into()?
                 ].into();
 
-        let mut rng = rand::thread_rng();
-        let private_key = ecdsa::SigningKey::from(p256::SecretKey::random(&mut rng));
+        let private_key =
+            ecdsa::SigningKey::from(p256::SecretKey::random(&mut pkcs8::rand_core::OsRng));
         let mut builder = CertRequestBuilder::new(subject, &private_key)?;
         builder.add_extension(&x509_ext::BasicConstraints {
             ca: false,

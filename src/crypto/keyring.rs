@@ -17,12 +17,20 @@ use std::collections::HashMap;
 use aws_lc_rs::{signature as aws_lc_rs_signature, signature::UnparsedPublicKey};
 use const_oid::db::rfc5912::{ID_EC_PUBLIC_KEY, RSA_ENCRYPTION, SECP_256_R_1};
 use digest::Digest;
+use pkcs8::der::asn1::ObjectIdentifier as Pkcs8ObjectIdentifier;
 use thiserror::Error;
 use x509_cert::{
     der,
     der::{Decode, Encode},
     spki::SubjectPublicKeyInfoOwned,
 };
+
+/// Convert const_oid 0.10.1 ObjectIdentifier to pkcs8 ObjectIdentifier
+fn to_pkcs8_oid(oid: &const_oid::ObjectIdentifier) -> Pkcs8ObjectIdentifier {
+    // Get the bytes from const_oid 0.10.1 OID and parse as pkcs8 OID
+    let bytes = oid.as_bytes();
+    Pkcs8ObjectIdentifier::from_bytes(bytes).expect("failed to parse OID")
+}
 
 #[derive(Error, Debug)]
 pub enum KeyringError {
@@ -52,29 +60,41 @@ impl Key {
         let spki = SubjectPublicKeyInfoOwned::from_der(spki_bytes)?;
         let (algo, params) = if let Some(params) = &spki.algorithm.parameters {
             // Special-case RSA keys, which don't have SPKI parameters.
-            if spki.algorithm.oid == RSA_ENCRYPTION && params == &der::Any::null() {
+            // Convert const_oid 0.10.1 RSA_ENCRYPTION to pkcs8 format for comparison
+            if spki.algorithm.oid == to_pkcs8_oid(&RSA_ENCRYPTION) && params == &der::Any::null() {
                 // TODO(tnytown): Do we need to support RSA keys?
                 return Err(KeyringError::AlgoUnsupported);
             };
 
-            (spki.algorithm.oid, params.decode_as()?)
+            (
+                spki.algorithm.oid,
+                params.decode_as::<Pkcs8ObjectIdentifier>()?,
+            )
         } else {
             return Err(KeyringError::AlgoUnsupported);
         };
 
+        // Convert const_oid 0.10.1 OIDs to pkcs8 format for comparison
+        let id_ec_public_key_pkcs8 = to_pkcs8_oid(&ID_EC_PUBLIC_KEY);
+        let secp_256_r_1_pkcs8 = to_pkcs8_oid(&SECP_256_R_1);
+
         match (algo, params) {
             // TODO(tnytown): should we also accept ed25519, p384, ... ?
-            (ID_EC_PUBLIC_KEY, SECP_256_R_1) => Ok(Key {
-                inner: UnparsedPublicKey::new(
-                    &aws_lc_rs_signature::ECDSA_P256_SHA256_ASN1,
-                    spki.subject_public_key.raw_bytes().to_owned(),
-                ),
-                fingerprint: {
-                    let mut hasher = sha2::Sha256::new();
-                    spki.encode(&mut hasher).expect("failed to hash key!");
-                    hasher.finalize().into()
-                },
-            }),
+            (algo_oid, params_oid)
+                if algo_oid == id_ec_public_key_pkcs8 && params_oid == secp_256_r_1_pkcs8 =>
+            {
+                Ok(Key {
+                    inner: UnparsedPublicKey::new(
+                        &aws_lc_rs_signature::ECDSA_P256_SHA256_ASN1,
+                        spki.subject_public_key.raw_bytes().to_owned(),
+                    ),
+                    fingerprint: {
+                        let mut hasher = sha2::Sha256::new();
+                        spki.encode(&mut hasher).expect("failed to hash key!");
+                        hasher.finalize().into()
+                    },
+                })
+            }
             _ => Err(KeyringError::AlgoUnsupported),
         }
     }
