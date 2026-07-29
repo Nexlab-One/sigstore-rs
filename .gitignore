@@ -14,3 +14,5 @@ Cargo.lock
 # ide files
 .idea
 .vscode
+# Akira agent-config source (generated/synced - not repo content)
+.agents/
